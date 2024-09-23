@@ -1,22 +1,223 @@
-## Objective
+# ECS Blue/Green Deployment with Terraform
 
-Configure the following resources on AWS using Terraform:
+## Project Overview
 
-1. **3-tier VPC**: Set up a Virtual Private Cloud with public and private subnets.
-2. **Load-balanced ECS Fargate Service**: Deploy a sample web server (e.g., Nginx) using ECS Fargate with load balancing.
-3. **CodeDeploy Resources**: Implement resources for managing blue-green deployment of new service versions.
-4. **S3 Bucket**: Create an S3 bucket to store sample HTML files for the web server.
-5. **SSM Parameter**: Define an SSM parameter to specify the prefix/key of the HTML file served by the web server.
-6. **CloudWatch Logs**: Set up log groups in CloudWatch Logs to collect access and error logs of the web server.
+This project demonstrates the implementation of a scalable and highly available web application using AWS ECS (Elastic Container Service) with Blue/Green deployment capabilities. The infrastructure is defined and managed using Terraform, enabling Infrastructure as Code (IaC) practices.
 
-### ECS Task Definition
+## Architecture
 
-- **Container 1 (Sidecar Pattern)**: 
-  - Runs a script to download the S3 object specified by the SSM parameter (e.g., s3://bucket/v1/index.html).
-  - Stores the downloaded file in the task's virtual volume.
-  - Passes the SSM parameter value to the container via environment variables defined in the task definition.
+The solution implements a 3-tier architecture with the following components:
 
-- **Container 2 (Web Server)**:
-  - Waits for the first container to finish execution.
-  - Mounts the virtual volume updated by the script.
-  - Serves the downloaded file.
+1. **Networking**: A custom VPC with public and private subnets across multiple Availability Zones.
+2. **Compute**: ECS Fargate for running containerized applications.
+3. **Load Balancing**: Application Load Balancer (ALB) for distributing traffic.
+4. **CI/CD**: AWS CodePipeline with CodeBuild and CodeDeploy for continuous integration and deployment.
+5. **Storage**: S3 for storing static web content and deployment artifacts.
+6. **Configuration**: AWS Systems Manager (SSM) Parameter Store for managing application configuration.
+7. **Monitoring**: CloudWatch for logging and monitoring.
+
+## Key Features
+
+- **Blue/Green Deployments**: Utilizes AWS CodeDeploy for zero-downtime deployments.
+- **Scalability**: ECS Fargate allows easy scaling of container instances.
+- **Security**: Implements network isolation with public and private subnets.
+- **Flexibility**: Easily updateable web content through S3 and SSM parameters.
+- **Observability**: Integrated logging with CloudWatch.
+
+## Prerequisites
+
+- AWS Account
+- Terraform (version 0.12+)
+- AWS CLI configured with appropriate permissions
+- GitHub repository for application code
+
+## Project Structure
+
+```
+.
+├── 00-data.tf
+├── 01-main.tf
+├── 02-network.tf
+├── 03-bucket.tf
+├── 04-build-content.tf
+├── 04-build-deployment.tf
+├── 04-build-downloader.tf
+├── 04-build-webserver.tf
+├── 05-service-pipeline.tf
+├── 05-service-role.tf
+├── 05-service.tf
+├── README.md
+├── modules
+│   └── builder
+│       ├── data.tf
+│       ├── main.tf
+│       ├── outputs.tf
+│       └── variables.tf
+├── services
+│   ├── deployment
+│   │   └── buildspec.yml
+│   ├── downloader
+│   │   ├── Dockerfile
+│   │   ├── buildspec.yml
+│   │   └── download_script.py
+│   ├── webcontent
+│   │   ├── buildspec.yml
+│   │   └── objects
+│   │       ├── index-01.html
+│   │       ├── index-02.html
+│   │       └── index-03.html
+│   └── webserver
+│       ├── Dockerfile
+│       ├── buildspec.yml
+│       └── nginx.conf
+```
+
+## Architecture and Flow
+
+### Architecture Diagram
+
+```
+graph TB
+    subgraph GitHub
+        A[GitHub Repository]
+    end
+
+    subgraph AWS["AWS Cloud"]
+        subgraph CodePipeline
+            B[Source]
+            C[Build]
+            D[Deploy]
+        end
+
+        subgraph CodeBuild
+            E[Prepare Deployment]
+        end
+
+        subgraph CodeDeploy
+            F[Blue/Green Deployment]
+        end
+
+        subgraph VPC["VPC"]
+            subgraph PublicSubnets["Public Subnets"]
+                G[NAT Gateway]
+                H[Application Load Balancer]
+            end
+            subgraph PrivateSubnets["Private Subnets"]
+                I[ECS Cluster]
+                subgraph ECSService["ECS Service"]
+                    J[Blue Task Set]
+                    K[Green Task Set]
+                end
+            end
+        end
+
+        L[(S3 Bucket)]
+        M[(ECR)]
+        N[SSM Parameter Store]
+        O[CloudWatch Logs]
+    end
+
+    A -->|Trigger| B
+    B --> C
+    C --> D
+    C -->|Build Images| M
+    D -->|Deploy| F
+    F -->|Update| I
+    H -->|Route Traffic| J
+    H -->|Route Traffic| K
+    I -->|Pull Images| M
+    I -->|Read Config| N
+    I -->|Download Content| L
+    I -->|Log| O
+    J -->|Serve| H
+    K -->|Serve| H
+```
+
+### Deployment Flow
+
+1. **Source**: The process begins when changes are pushed to the GitHub repository.
+
+2. **Build**: AWS CodePipeline triggers a CodeBuild job, which:
+   - Builds Docker images for the Downloader and Web Server containers
+   - Pushes these images to Amazon ECR
+
+3. **Deploy**: CodeDeploy manages the Blue/Green deployment:
+   - Creates a new (Green) Task Definition with updated container images
+   - Deploys the new Task Definition to the ECS Cluster
+   - Routes traffic gradually from the old (Blue) to the new (Green) version
+
+4. **Application**: The ECS Task runs two containers:
+   - Downloader: Fetches the specified HTML file from S3 based on the SSM Parameter
+   - Web Server: Serves the downloaded HTML file
+
+5. **Load Balancing**: The Application Load Balancer distributes incoming traffic to the active Task Definition.
+
+6. **Monitoring**: CloudWatch collects logs and metrics from the ECS Cluster and other AWS services.
+
+This architecture ensures high availability, scalability, and enables zero-downtime deployments through the Blue/Green deployment strategy.
+
+## Setup and Deployment
+
+1. Clone this repository:
+   ```
+   git clone <repository-url>
+   cd <repository-name>
+   ```
+
+2. Initialize Terraform:
+   ```
+   terraform init
+   ```
+
+3. Review and modify variables in `01-main.tf` as needed.
+
+4. Plan the Terraform execution:
+   ```
+   terraform plan
+   ```
+
+5. Apply the Terraform configuration:
+   ```
+   terraform apply
+   ```
+
+6. Confirm the changes and type `yes` when prompted.
+
+## Usage
+
+After deployment:
+
+1. Access the web application via the ALB DNS name (output after Terraform apply).
+2. Update the SSM parameter to change the served HTML file.
+3. Trigger a new deployment through the CodePipeline to see Blue/Green deployment in action.
+
+## Monitoring and Logging
+
+- Access CloudWatch Logs to view application and ECS cluster logs.
+- Monitor the ECS cluster, services, and tasks through the AWS ECS console.
+- View deployment history and status in the AWS CodeDeploy console.
+
+## Cleanup
+
+To destroy the created resources:
+
+```
+terraform destroy
+```
+
+
+Confirm the destruction by typing `yes` when prompted.
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a Pull Request.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Acknowledgments
+
+- AWS Documentation
+- Terraform Documentation
+- The open-source community for various tools and libraries used in this project

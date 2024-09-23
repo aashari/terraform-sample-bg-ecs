@@ -1,0 +1,50 @@
+version: 0.2
+
+phases:
+  pre_build:
+    commands:
+      - echo "Installing dependencies..."
+      - yum update -y && yum install -y jq
+  build:
+    commands:
+      - echo "Preparing deployment artifacts..."
+      - |
+        # Get the current task definition
+        TASK_DEF=$(aws ecs describe-task-definition --task-definition $TASK_DEFINITION_FAMILY --region $AWS_DEFAULT_REGION)
+        
+        # Update the task definition with new image URIs
+        NEW_TASK_DEF=$(echo $TASK_DEF | jq --arg WEBSERVER_IMAGE "$WEBSERVER_IMAGE" --arg DOWNLOADER_IMAGE "$DOWNLOADER_IMAGE" '.taskDefinition | .containerDefinitions[0].image = $DOWNLOADER_IMAGE | .containerDefinitions[1].image = $WEBSERVER_IMAGE')
+        
+        # Remove unnecessary fields from the task definition
+        NEW_TASK_DEF=$(echo $NEW_TASK_DEF | jq 'del(.taskDefinitionArn, .revision, .status, .requiresAttributes, .compatibilities, .registeredAt, .registeredBy)')
+        
+        # Write the new task definition to a file
+        echo $NEW_TASK_DEF | jq '.' > taskdef.json
+        
+        # Get container details for AppSpec (focusing on webserver)
+        CONTAINER_NAME=$(echo $NEW_TASK_DEF | jq -r '.containerDefinitions[] | select(.name == "webserver") | .name')
+        CONTAINER_PORT=$(echo $NEW_TASK_DEF | jq -r '.containerDefinitions[] | select(.name == "webserver") | .portMappings[0].containerPort')
+        
+        # Create the AppSpec file
+        cat << EOF > appspec.yaml
+        version: 0.0
+        Resources:
+          - TargetService:
+              Type: AWS::ECS::Service
+              Properties:
+                TaskDefinition: <TASK_DEFINITION>
+                LoadBalancerInfo:
+                  ContainerName: "$CONTAINER_NAME"
+                  ContainerPort: $CONTAINER_PORT
+        EOF
+  post_build:
+    commands:
+      - echo "Deployment preparation completed."
+      - cat taskdef.json
+      - cat appspec.yaml
+
+artifacts:
+  files:
+    - taskdef.json
+    - appspec.yaml
+  name: deployment_artifacts

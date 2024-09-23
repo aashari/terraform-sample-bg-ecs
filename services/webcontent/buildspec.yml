@@ -1,0 +1,23 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      python: 3.8
+    commands:
+      - pip install awscli
+      - cd services/webcontent
+  build:
+    commands:
+      - echo Build started on `date`
+      - echo Compiling the Python code...
+      - python -m compileall .
+  post_build:
+    commands:
+      - echo Build completed on `date`
+      - echo Syncing files to S3 bucket...
+      - aws s3 sync objects s3://$S3_BUCKET_NAME/
+artifacts:
+  files:
+    - '**/*'
+  discard-paths: yes
