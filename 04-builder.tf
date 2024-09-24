@@ -150,6 +150,7 @@ module "build_webserver" {
   buildspec_path          = "services/webserver/buildspec.yml"
   include_ecr             = true
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
+  log_retention_days      = local.default_log_retention_days
 
   environment_variables = []
 
