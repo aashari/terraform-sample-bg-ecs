@@ -141,21 +141,17 @@ resource "aws_iam_role_policy" "codebuild_service_role_policy" {
           Action = [
             "codebuild:BatchGetBuilds",
             "codebuild:StartBuild",
-            "codebuild:StopBuild",
-            "codebuild:BatchGetProjects",
-            "codebuild:ListBuildsForProject"
+            "codebuild:StopBuild"
           ]
           Resource = [
-            "arn:aws:codebuild:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:project/${var.prefix_name}-build-${var.project_name}"
+            aws_codebuild_project.build_project.arn
           ]
         },
         {
           Action = [
-            "codestar-connections:UseConnection",
-            "codeconnections:GetConnectionToken",
             "ecr:GetAuthorizationToken"
           ]
-          Resource = ["*"]
+          Resource = "*"
           Effect   = "Allow"
         }
       ],

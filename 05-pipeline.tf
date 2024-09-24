@@ -174,7 +174,12 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
           "codebuild:BatchGetBuilds",
           "codebuild:StartBuild"
         ]
-        Resource = ["*"]
+        Resource = [
+          module.build_content.codebuild_project_arn,
+          module.build_downloader.codebuild_project_arn,
+          module.build_webserver.codebuild_project_arn,
+          module.prepare_deployment.codebuild_project_arn
+        ]
       },
       {
         Effect = "Allow"
@@ -186,16 +191,19 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
           "codedeploy:GetDeploymentConfig",
           "codedeploy:RegisterApplicationRevision"
         ]
-        Resource = ["*"]
+        Resource = [
+          aws_codedeploy_app.web_server.arn,
+          aws_codedeploy_deployment_group.web_server.arn,
+          "arn:aws:codedeploy:${data.aws_region.current.name}:${data.aws_caller_identity.current.account_id}:deploymentconfig:*"
+        ]
       },
       {
         Effect = "Allow"
         Action = [
           "codestar-connections:UseConnection"
         ]
-        Resource = aws_codestarconnections_connection.github.arn
+        Resource = [aws_codestarconnections_connection.github.arn]
       },
-      // Add this new statement for ECS permissions
       {
         Effect = "Allow"
         Action = [
@@ -206,7 +214,6 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
         ]
         Resource = "*"
       },
-      // Update the existing IAM PassRole statement
       {
         Effect = "Allow"
         Action = "iam:PassRole"
@@ -216,15 +223,6 @@ resource "aws_iam_role_policy" "codepipeline_policy" {
         ]
       }
     ]
-  })
-}
-
-resource "aws_codestarconnections_connection" "github" {
-  name          = "${local.prefix_name}-github-connection"
-  provider_type = "GitHub"
-
-  tags = merge(local.common_tags, {
-    Name = "github"
   })
 }
 
@@ -318,6 +316,47 @@ resource "aws_iam_role" "codedeploy_role" {
 resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
   policy_arn = "arn:aws:iam::aws:policy/AWSCodeDeployRoleForECS"
   role       = aws_iam_role.codedeploy_role.name
+}
+
+resource "aws_iam_role_policy" "codedeploy_custom_policy" {
+  name = "${local.prefix_name}-codedeploy-custom-policy"
+  role = aws_iam_role.codedeploy_role.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Effect = "Allow"
+        Action = [
+          "ecs:DescribeServices",
+          "ecs:CreateTaskSet",
+          "ecs:UpdateServicePrimaryTaskSet",
+          "ecs:DeleteTaskSet",
+          "elasticloadbalancing:DescribeTargetGroups",
+          "elasticloadbalancing:DescribeListeners",
+          "elasticloadbalancing:ModifyListener",
+          "elasticloadbalancing:DescribeRules",
+          "elasticloadbalancing:ModifyRule",
+          "lambda:InvokeFunction",
+          "cloudwatch:DescribeAlarms",
+          "sns:Publish",
+          "s3:GetObject",
+          "s3:GetObjectVersion"
+        ]
+        Resource = "*"
+      },
+      {
+        Effect = "Allow"
+        Action = [
+          "iam:PassRole"
+        ]
+        Resource = [
+          aws_iam_role.ecs_task_execution_role.arn,
+          aws_iam_role.ecs_service_role.arn
+        ]
+      }
+    ]
+  })
 }
 
 resource "aws_lb_target_group" "web_server_blue" {

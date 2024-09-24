@@ -21,4 +21,6 @@ locals {
   private_subnet_cidrs = ["192.168.3.0/24", "192.168.4.0/24"]
   availability_zones   = ["ap-southeast-1a", "ap-southeast-1b"]
 
+  default_log_retention_days = 3
+
 }

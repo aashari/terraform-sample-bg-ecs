@@ -7,6 +7,7 @@ module "build_content" {
   buildspec_path          = "services/webcontent/buildspec.yml"
   include_ecr             = false
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
+  log_retention_days      = local.default_log_retention_days
 
   environment_variables = [
     {
@@ -44,6 +45,7 @@ module "prepare_deployment" {
   buildspec_path          = "services/deployment/buildspec.yml"
   include_ecr             = false
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
+  log_retention_days      = local.default_log_retention_days
 
   environment_variables = [
     {
@@ -110,7 +112,8 @@ module "build_downloader" {
   buildspec_path          = "services/downloader/buildspec.yml"
   include_ecr             = true
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
-
+  log_retention_days      = local.default_log_retention_days
+  
   environment_variables = [
     {
       name  = "S3_BUCKET_NAME"
