@@ -113,7 +113,7 @@ module "build_downloader" {
   include_ecr             = true
   codestar_connection_arn = aws_codestarconnections_connection.github.arn
   log_retention_days      = local.default_log_retention_days
-  
+
   environment_variables = [
     {
       name  = "S3_BUCKET_NAME"

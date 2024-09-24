@@ -20,6 +20,10 @@ resource "aws_lb_listener" "web_server" {
     type             = "forward"
     target_group_arn = aws_lb_target_group.web_server_blue.arn
   }
+
+  lifecycle {
+    ignore_changes = [default_action]
+  }
 }
 
 resource "aws_lb_target_group" "web_server" {
