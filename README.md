@@ -76,70 +76,72 @@ The solution implements a 3-tier architecture with the following components:
 ```
 graph TB
     subgraph GitHub
-        A[GitHub Repository]
+        A[GitHub: Repository]
     end
 
     subgraph AWS["AWS Cloud"]
-        subgraph CodePipeline
+        subgraph CodePipeline["CodePipeline: Web Server Pipeline"]
             B[Source]
             C[Build]
-            D[Deploy]
+            D[Prepare Deployment]
+            E[Deploy]
         end
 
-        subgraph CodeBuild
-            E[Build Content]
-            F[Build Downloader]
-            G[Build WebServer]
-            H[Prepare Deployment]
+        F[CodeBuild: Build Content]
+        G[CodeBuild: Build Downloader]
+        H[CodeBuild: Build WebServer]
+        
+        subgraph CodeDeploy["CodeDeploy: Blue/Green Deployment"]
+            J[Blue/Green Deployment]
         end
 
-        subgraph CodeDeploy
-            I[Blue/Green Deployment]
-        end
-
-        subgraph VPC["VPC"]
+        subgraph VPC["VPC: Main"]
             subgraph PublicSubnets["Public Subnets"]
-                J[NAT Gateway]
-                K[Application Load Balancer]
+                K[NAT Gateway]
+                L[ALB: Web Server]
             end
             subgraph PrivateSubnets["Private Subnets"]
-                L[ECS Cluster]
+                M[ECS Cluster]
                 subgraph ECSService["ECS Service"]
-                    M[Blue Task Set]
-                    N[Green Task Set]
+                    N[Blue Task Set]
+                    O[Green Task Set]
                 end
             end
         end
 
-        O[(S3 Bucket - Web Content)]
-        P[(S3 Bucket - Artifacts)]
-        Q[(ECR - Downloader)]
-        R[(ECR - WebServer)]
-        S[SSM Parameter Store]
-        T[CloudWatch Logs]
+        subgraph DeploymentPreparation["Deployment Preparation"]
+            I[CodeBuild: Prepare Artifacts]
+            Q[(S3: Artifacts)]
+        end
+
+        P[(S3: Web Content)]
+        subgraph ECR["Amazon ECR"]
+            R[(ECR: Downloader)]
+            S[(ECR: WebServer)]
+        end
+        
+        subgraph PARAMETER["Amazon SSM"]
+            T[SSM: Parameter Store]
+        end
+        
     end
 
     A -->|Trigger| B
     B --> C
-    C --> E
-    C --> F
-    C --> G
-    C --> H
-    E -->|Upload Content| O
-    F -->|Push Image| Q
-    G -->|Push Image| R
-    H -->|Create Artifacts| P
-    D -->|Use Artifacts| I
-    I -->|Deploy| L
-    K -->|Route Traffic| M
-    K -->|Route Traffic| N
-    L -->|Pull Images| Q
-    L -->|Pull Images| R
-    L -->|Read Config| S
-    L -->|Download Content| O
-    L -->|Log| T
-    M -->|Serve| K
-    N -->|Serve| K
+    C --> F & G & H & D
+    D --> I
+    I -->|Create| Q
+    D --> E
+    E -->|Use| J
+    F -->|Upload| P
+    G -->|Push| R
+    H -->|Push| S
+    J -->|Deploy| ECSService
+    L -->|Route| N & O
+    ECSService -->|Pull| ECR
+    ECSService -->|Download| P
+    N & O -->|Serve| L
+    K -->|Internet Access| PrivateSubnets
 ```
 
 ### Deployment Flow
