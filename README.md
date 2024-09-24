@@ -73,6 +73,8 @@ The solution implements a 3-tier architecture with the following components:
 
 ### Architecture Diagram
 
+![Architecture Diagram](https://files.brainybuddy.app/messages/dc1e33dbac043b6b7635a58c293b4afc.png)
+
 ```
 graph TB
     subgraph GitHub
