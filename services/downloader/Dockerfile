@@ -1,14 +1,19 @@
-# Use an official Python runtime as a parent image
-FROM python:3.9-slim
+# Use Amazon Linux 2 as the base image
+FROM amazonlinux:2
 
 # Set the working directory in the container
 WORKDIR /app
 
-# Copy the script into the container
-COPY download_script.py .
+# Install AWS CLI
+RUN yum update -y && \
+    yum install -y aws-cli && \
+    yum clean all
 
-# Install boto3 and AWS CLI
-RUN pip install boto3 awscli
+# Copy the script into the container
+COPY script.sh .
+
+# Make the script executable
+RUN chmod +x script.sh
 
 # Run the script
-CMD ["python", "download_script.py"]
+CMD ["./script.sh"]
