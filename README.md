@@ -91,7 +91,7 @@ graph TB
         G[CodeBuild: Build Downloader]
         H[CodeBuild: Build WebServer]
         
-        subgraph CodeDeploy["CodeDeploy: Blue/Green Deployment"]
+        subgraph CodeDeploy["CodeDeploy"]
             J[Blue/Green Deployment]
         end
 
@@ -132,7 +132,7 @@ graph TB
     D --> I
     I -->|Create| Q
     D --> E
-    E -->|Use| J
+    E --> J
     F -->|Upload| P
     G -->|Push| R
     H -->|Push| S
