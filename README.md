@@ -141,7 +141,6 @@ graph TB
     ECSService -->|Pull| ECR
     ECSService -->|Download| P
     N & O -->|Serve| L
-    K -->|Internet Access| PrivateSubnets
 ```
 
 ### Deployment Flow
