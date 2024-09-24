@@ -141,6 +141,9 @@ resource "aws_ecs_service" "web_server" {
     type = "CODE_DEPLOY"
   }
 
+  // Add this block to ensure the service depends on the listener
+  depends_on = [aws_lb_listener.web_server]
+
   tags = merge(local.common_tags, {
     Name = "${local.prefix_name}-web-server-service"
   })
@@ -195,7 +198,7 @@ resource "aws_lb_listener" "web_server" {
 
   default_action {
     type             = "forward"
-    target_group_arn = aws_lb_target_group.web_server.arn
+    target_group_arn = aws_lb_target_group.web_server_blue.arn
   }
 }
 

@@ -32,6 +32,52 @@ resource "aws_codepipeline" "web_server_pipeline" {
     name = "Build"
 
     action {
+      name            = "Build_Content"
+      category        = "Build"
+      owner           = "AWS"
+      provider        = "CodeBuild"
+      input_artifacts = ["source_output"]
+      version         = "1"
+      run_order       = 1
+
+      configuration = {
+        ProjectName = module.build_content.codebuild_project_name
+      }
+    }
+
+    action {
+      name            = "Build_Downloader"
+      category        = "Build"
+      owner           = "AWS"
+      provider        = "CodeBuild"
+      input_artifacts = ["source_output"]
+      version         = "1"
+      run_order       = 1
+
+      configuration = {
+        ProjectName = module.build_downloader.codebuild_project_name
+      }
+    }
+
+    action {
+      name            = "Build_Webserver"
+      category        = "Build"
+      owner           = "AWS"
+      provider        = "CodeBuild"
+      input_artifacts = ["source_output"]
+      version         = "1"
+      run_order       = 1
+
+      configuration = {
+        ProjectName = module.build_webserver.codebuild_project_name
+      }
+    }
+  }
+
+  stage {
+    name = "Prepare_Deployment"
+
+    action {
       name             = "Prepare_Deployment"
       category         = "Build"
       owner            = "AWS"
@@ -223,19 +269,22 @@ resource "aws_codedeploy_deployment_group" "web_server" {
     events  = ["DEPLOYMENT_FAILURE"]
   }
 
-  // Add this load_balancer_info block
   load_balancer_info {
     target_group_pair_info {
       prod_traffic_route {
         listener_arns = [aws_lb_listener.web_server.arn]
       }
 
-      target_group {
-        name = aws_lb_target_group.web_server.name
+      test_traffic_route {
+        listener_arns = [aws_lb_listener.test_traffic.arn]
       }
 
       target_group {
         name = aws_lb_target_group.web_server_blue.name
+      }
+
+      target_group {
+        name = aws_lb_target_group.web_server_green.name
       }
     }
   }
@@ -271,7 +320,6 @@ resource "aws_iam_role_policy_attachment" "codedeploy_policy" {
   role       = aws_iam_role.codedeploy_role.name
 }
 
-// Add this new target group for blue/green deployment
 resource "aws_lb_target_group" "web_server_blue" {
   name        = "${local.prefix_name}-tg-blue"
   port        = 80
@@ -292,4 +340,37 @@ resource "aws_lb_target_group" "web_server_blue" {
   tags = merge(local.common_tags, {
     Name = "${local.prefix_name}-tg-blue"
   })
+}
+
+resource "aws_lb_target_group" "web_server_green" {
+  name        = "${local.prefix_name}-tg-green"
+  port        = 80
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "ip"
+
+  health_check {
+    healthy_threshold   = "3"
+    interval            = "30"
+    protocol            = "HTTP"
+    matcher             = "200"
+    timeout             = "5"
+    path                = "/"
+    unhealthy_threshold = "2"
+  }
+
+  tags = merge(local.common_tags, {
+    Name = "${local.prefix_name}-tg-green"
+  })
+}
+
+resource "aws_lb_listener" "test_traffic" {
+  load_balancer_arn = aws_lb.web_server.arn
+  port              = "8080"
+  protocol          = "HTTP"
+
+  default_action {
+    type = "forward"
+    target_group_arn = aws_lb_target_group.web_server_green.arn
+  }
 }
