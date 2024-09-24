@@ -87,47 +87,59 @@ graph TB
         end
 
         subgraph CodeBuild
-            E[Prepare Deployment]
+            E[Build Content]
+            F[Build Downloader]
+            G[Build WebServer]
+            H[Prepare Deployment]
         end
 
         subgraph CodeDeploy
-            F[Blue/Green Deployment]
+            I[Blue/Green Deployment]
         end
 
         subgraph VPC["VPC"]
             subgraph PublicSubnets["Public Subnets"]
-                G[NAT Gateway]
-                H[Application Load Balancer]
+                J[NAT Gateway]
+                K[Application Load Balancer]
             end
             subgraph PrivateSubnets["Private Subnets"]
-                I[ECS Cluster]
+                L[ECS Cluster]
                 subgraph ECSService["ECS Service"]
-                    J[Blue Task Set]
-                    K[Green Task Set]
+                    M[Blue Task Set]
+                    N[Green Task Set]
                 end
             end
         end
 
-        L[(S3 Bucket)]
-        M[(ECR)]
-        N[SSM Parameter Store]
-        O[CloudWatch Logs]
+        O[(S3 Bucket - Web Content)]
+        P[(S3 Bucket - Artifacts)]
+        Q[(ECR - Downloader)]
+        R[(ECR - WebServer)]
+        S[SSM Parameter Store]
+        T[CloudWatch Logs]
     end
 
     A -->|Trigger| B
     B --> C
-    C --> D
-    C -->|Build Images| M
-    D -->|Deploy| F
-    F -->|Update| I
-    H -->|Route Traffic| J
-    H -->|Route Traffic| K
-    I -->|Pull Images| M
-    I -->|Read Config| N
-    I -->|Download Content| L
-    I -->|Log| O
-    J -->|Serve| H
-    K -->|Serve| H
+    C --> E
+    C --> F
+    C --> G
+    C --> H
+    E -->|Upload Content| O
+    F -->|Push Image| Q
+    G -->|Push Image| R
+    H -->|Create Artifacts| P
+    D -->|Use Artifacts| I
+    I -->|Deploy| L
+    K -->|Route Traffic| M
+    K -->|Route Traffic| N
+    L -->|Pull Images| Q
+    L -->|Pull Images| R
+    L -->|Read Config| S
+    L -->|Download Content| O
+    L -->|Log| T
+    M -->|Serve| K
+    N -->|Serve| K
 ```
 
 ### Deployment Flow
