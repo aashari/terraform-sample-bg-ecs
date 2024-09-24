@@ -39,12 +39,9 @@ The solution implements a 3-tier architecture with the following components:
 ├── 01-main.tf
 ├── 02-network.tf
 ├── 03-bucket.tf
-├── 04-build-content.tf
-├── 04-build-deployment.tf
-├── 04-build-downloader.tf
-├── 04-build-webserver.tf
-├── 05-service-pipeline.tf
-├── 05-service-role.tf
+├── 04-builder.tf
+├── 05-pipeline.tf
+├── 05-service.role.tf
 ├── 05-service.tf
 ├── README.md
 ├── modules
@@ -53,23 +50,23 @@ The solution implements a 3-tier architecture with the following components:
 │       ├── main.tf
 │       ├── outputs.tf
 │       └── variables.tf
-├── services
-│   ├── deployment
-│   │   └── buildspec.yml
-│   ├── downloader
-│   │   ├── Dockerfile
-│   │   ├── buildspec.yml
-│   │   └── download_script.py
-│   ├── webcontent
-│   │   ├── buildspec.yml
-│   │   └── objects
-│   │       ├── index-01.html
-│   │       ├── index-02.html
-│   │       └── index-03.html
-│   └── webserver
-│       ├── Dockerfile
-│       ├── buildspec.yml
-│       └── nginx.conf
+└── services
+    ├── deployment
+    │   └── buildspec.yml
+    ├── downloader
+    │   ├── Dockerfile
+    │   ├── buildspec.yml
+    │   └── download_script.py
+    ├── webcontent
+    │   ├── buildspec.yml
+    │   └── objects
+    │       ├── index-01.html
+    │       ├── index-02.html
+    │       └── index-03.html
+    └── webserver
+        ├── Dockerfile
+        ├── buildspec.yml
+        └── nginx.conf
 ```
 
 ## Architecture and Flow
